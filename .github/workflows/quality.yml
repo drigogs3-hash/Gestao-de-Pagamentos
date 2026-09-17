@@ -17,12 +17,39 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
       - name: Compilar
         run: python -m compileall -q app.py core tests
       - name: Testes automatizados
         run: pytest -q
       - name: Validar identidade visual protegida
         run: pytest -q tests/test_identidade_visual_lock.py
+      - name: Validacao visual Streamlit Playwright
+        run: |
+          mkdir -p artifacts
+          streamlit run app.py --server.headless true --server.address 127.0.0.1 --server.port 8555 > artifacts/streamlit.log 2>&1 &
+          STREAMLIT_PID=$!
+          trap 'kill $STREAMLIT_PID 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import time, urllib.request
+          for _ in range(60):
+              try:
+                  with urllib.request.urlopen('http://127.0.0.1:8555/_stcore/health', timeout=2) as r:
+                      if r.status == 200:
+                          break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise SystemExit('Streamlit nao ficou pronto em 60 segundos')
+          PY
+          python tests/visual_capture.py
+      - name: Publicar evidencias visuais
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc16-validacao-visual
+          path: artifacts/**
+          if-no-files-found: warn
       - name: Montar pacote de avaliacao
         run: |
           mkdir -p pacote
