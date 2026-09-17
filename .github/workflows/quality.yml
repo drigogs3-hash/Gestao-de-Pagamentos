@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
+      APP_URL: http://127.0.0.1:8555
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,6 +22,25 @@ jobs:
       - name: Compilar
         run: python -m compileall -q app.py core tests
       - name: Testes automatizados
-        run: pytest -q
+        run: pytest -q --ignore=tests/test_visual_revisoes.py
       - name: Validar identidade visual protegida
         run: pytest -q tests/test_identidade_visual_lock.py
+      - name: Iniciar Streamlit
+        run: |
+          mkdir -p artifacts/visual
+          nohup python -m streamlit run app.py --server.headless=true --server.port=8555 --server.address=127.0.0.1 > artifacts/visual/streamlit.log 2>&1 &
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8555/_stcore/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat artifacts/visual/streamlit.log
+          exit 1
+      - name: Validacao visual automatizada
+        run: pytest -q tests/test_visual_revisoes.py
+      - name: Publicar evidencias visuais
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-visual-revisoes
+          path: artifacts/visual/
+          if-no-files-found: warn
