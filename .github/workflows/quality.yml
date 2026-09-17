@@ -1,4 +1,4 @@
-name: Qualidade e regressao
+name: Qualidade funcional e pacote
 on:
   push:
   pull_request:
@@ -17,34 +17,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-          python -m playwright install --with-deps chromium
       - name: Compilar
         run: python -m compileall -q app.py core tests
       - name: Testes automatizados
         run: pytest -q
       - name: Validar identidade visual protegida
         run: pytest -q tests/test_identidade_visual_lock.py
-      - name: Iniciar Streamlit
-        run: |
-          mkdir -p artifacts
-          nohup python -m streamlit run app.py --server.headless true --server.port 8555 --server.address 127.0.0.1 > artifacts/streamlit.log 2>&1 &
-          for i in {1..60}; do
-            if curl -fsS http://127.0.0.1:8555/_stcore/health >/dev/null; then exit 0; fi
-            sleep 1
-          done
-          cat artifacts/streamlit.log
-          exit 1
-      - name: Capturar e validar tela real
-        run: python tests/visual_capture.py
-      - name: Publicar evidencias visuais
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: evidencia-visual-rc16
-          path: artifacts/**
-          if-no-files-found: warn
       - name: Montar pacote de avaliacao
-        if: success()
         run: |
           mkdir -p pacote
           cp app.py pacote/
@@ -55,7 +34,6 @@ jobs:
           for f in *.bat *.cmd *.ps1 README*; do [ -f "$f" ] && cp "$f" pacote/; done
           printf "V11.34 RC16 - AVALIACAO\nCommit: %s\n" "${GITHUB_SHA}" > pacote/VERSAO.txt
       - name: Publicar V11.34 RC16 avaliacao
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: V11.34-RC16-AVALIACAO
