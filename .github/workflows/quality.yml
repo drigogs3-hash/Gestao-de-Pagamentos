@@ -41,6 +41,23 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: evidencia-visual-rc16
-          path: |
-            artifacts/**
+          path: artifacts/**
           if-no-files-found: warn
+      - name: Montar pacote de avaliacao
+        if: success()
+        run: |
+          mkdir -p pacote
+          cp app.py pacote/
+          cp requirements.txt pacote/ 2>/dev/null || true
+          cp requirements-dev.txt pacote/ 2>/dev/null || true
+          cp -r core pacote/core
+          for d in assets .streamlit; do [ -d "$d" ] && cp -r "$d" "pacote/$d"; done
+          for f in *.bat *.cmd *.ps1 README*; do [ -f "$f" ] && cp "$f" pacote/; done
+          printf "V11.34 RC16 - AVALIACAO\nCommit: %s\n" "${GITHUB_SHA}" > pacote/VERSAO.txt
+      - name: Publicar V11.34 RC16 avaliacao
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V11.34-RC16-AVALIACAO
+          path: pacote/**
+          if-no-files-found: error
