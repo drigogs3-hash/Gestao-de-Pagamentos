@@ -24,3 +24,23 @@ jobs:
         run: pytest -q
       - name: Validar identidade visual protegida
         run: pytest -q tests/test_identidade_visual_lock.py
+      - name: Iniciar Streamlit
+        run: |
+          mkdir -p artifacts
+          nohup python -m streamlit run app.py --server.headless true --server.port 8555 --server.address 127.0.0.1 > artifacts/streamlit.log 2>&1 &
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8555/_stcore/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat artifacts/streamlit.log
+          exit 1
+      - name: Capturar e validar tela real
+        run: python tests/visual_capture.py
+      - name: Publicar evidencias visuais
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-visual-rc16
+          path: |
+            artifacts/**
+          if-no-files-found: warn
