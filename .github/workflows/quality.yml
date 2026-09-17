@@ -1,0 +1,24 @@
+name: Qualidade e regressao
+on:
+  push:
+  pull_request:
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Compilar
+        run: python -m compileall -q app.py core tests
+      - name: Testes automatizados
+        run: pytest -q
+      - name: Validar identidade visual protegida
+        run: pytest -q tests/test_identidade_visual_lock.py
